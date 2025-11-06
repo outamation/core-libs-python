@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "outamation_pkg_postgres"
+version = "0.1.0"
+description = "A generic asynchronous PostgreSQL utility package built on asyncpg."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "Proprietary" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: Other/Proprietary License",
+    "Operating System :: OS Independent",
+]
+
+# This is the most important part.
+# It tells pip to install 'asyncpg' when a user installs your package.
+dependencies = [
+    "asyncpg"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]  # Look for the source code in the 'src' directory
