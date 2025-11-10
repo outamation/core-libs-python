@@ -92,6 +92,7 @@ def setup_logging(
             )
         except Exception as e:
             logger.error(f"Failed to set up file logging at {log_file_path}: {e}")
+    return logger
 
 
 # --- 5. Define the Public API ---
