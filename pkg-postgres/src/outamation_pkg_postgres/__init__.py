@@ -1,4 +1,3 @@
-import asyncio
 import loguru
 import asyncpg
 import contextlib
@@ -8,12 +7,13 @@ from typing import Optional, Any, List, Tuple, AsyncGenerator, Callable, Awaitab
 # Get a logger. The consuming app is responsible for configuring it.
 log = loguru.logger
 
+
 class PostgresManager:
     """
     An async context manager for handling an asyncpg connection pool.
 
     Provides two main ways to use it:
-    
+
     1. As a web-app singleton:
        db = PostgresManager.from_env()
        await db.connect()  # On app startup
@@ -46,7 +46,7 @@ class PostgresManager:
         self.min_pool_size = min_pool_size
         self.max_pool_size = max_pool_size
         self.pool: Optional[asyncpg.Pool] = None
-        self.init_callback = init_callback # NEW: Hook for app-specific setup
+        self.init_callback = init_callback  # NEW: Hook for app-specific setup
 
     @classmethod
     def from_env(cls, **kwargs):
@@ -60,7 +60,7 @@ class PostgresManager:
             user=os.getenv("PG_USER", "postgres"),
             password=os.getenv("PG_PASSWORD", ""),
             database=os.getenv("PG_DATABASE", "postgres"),
-            **kwargs, # Allow overriding env vars
+            **kwargs,  # Allow overriding env vars
         )
 
     async def connect(self):
@@ -80,7 +80,9 @@ class PostgresManager:
                 max_size=self.max_pool_size,
                 init=self.init_callback,  # NEW: Use the setup callback
             )
-            log.info(f"Postgres pool created for {self.user}@{self.host}:{self.port}/{self.database}")
+            log.info(
+                f"Postgres pool created for {self.user}@{self.host}:{self.port}/{self.database}"
+            )
         except Exception as e:
             log.exception(f"Failed to create Postgres pool: {e}")
             raise
@@ -92,7 +94,7 @@ class PostgresManager:
             self.pool = None
             log.info("Postgres connection pool closed.")
 
-    async def __aenter__(self) -> 'PostgresManager':
+    async def __aenter__(self) -> "PostgresManager":
         """Async context manager entry."""
         await self.connect()
         return self
@@ -111,12 +113,12 @@ class PostgresManager:
         return self.pool
 
     # --- NEW: Connection Context Manager ---
-    
+
     @contextlib.asynccontextmanager
     async def get_connection(self) -> AsyncGenerator[asyncpg.Connection, None]:
         """
         NEW: Acquires a single connection from the pool.
-        
+
         This is the perfect replacement for your 'run_with_conn' pattern,
         especially when you need to run multiple commands on one connection
         (like setting audit info before a query).
@@ -129,7 +131,7 @@ class PostgresManager:
 
     async def fetch_all(self, query: str, *params) -> List[asyncpg.Record]:
         """Fetches all rows for a query."""
-        pool = self._get_pool() # FIX: Was 'self_get_pool'
+        pool = self._get_pool()  # FIX: Was 'self_get_pool'
         async with pool.acquire() as conn:
             return await conn.fetch(query, *params)
 
@@ -163,7 +165,9 @@ class PostgresManager:
         async with pool.acquire() as conn:
             await conn.executemany(query, args_list)
 
-    async def execute_and_fetch_row(self, query: str, *params) -> Optional[asyncpg.Record]:
+    async def execute_and_fetch_row(
+        self, query: str, *params
+    ) -> Optional[asyncpg.Record]:
         """
         Executes a command and returns the first row,
         perfect for 'INSERT ... RETURNING *'.
