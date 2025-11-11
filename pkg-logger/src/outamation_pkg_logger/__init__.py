@@ -19,6 +19,7 @@ Advanced (console and file logging):
 >>> logger.info("This will go to both console and my_app.log")
 """
 
+import asyncio
 import functools
 import sys
 import os
@@ -106,28 +107,56 @@ def setup_logging(
 def trace(func):
     """
     A decorator that logs the entry and exit of a function at TRACE level.
-    It also logs arguments and the return value.
+    This decorator is "async-aware" and works with both regular
+    and async functions.
     """
 
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        # Format arguments for logging
-        args_repr = [repr(a) for a in args]
-        kwargs_repr = [f"{k}={v!r}" for k, v in kwargs.items()]
-        signature = ", ".join(args_repr + kwargs_repr)
+    # Check if the function we're wrapping is async or not
+    if asyncio.iscoroutinefunction(func):
+        # --- Create an ASYNC wrapper for ASYNC functions ---
+        @functools.wraps(func)
+        async def async_wrapper(*args, **kwargs):
+            # Format arguments for logging
+            args_repr = [repr(a) for a in args]
+            kwargs_repr = [f"{k}={v!r}" for k, v in kwargs.items()]
+            signature = ", ".join(args_repr + kwargs_repr)
 
-        logger.trace(f"Entering: {func.__name__}({signature})")
+            logger.trace(f"Entering: {func.__name__}({signature})")
 
-        try:
-            result = func(*args, **kwargs)
-            logger.trace(f"Exiting: {func.__name__} (result={result!r})")
-            return result
-        except Exception as e:
-            # Re-log the exception at ERROR level and re-raise
-            logger.error(f"Exception in {func.__name__}: {e}", exc_info=True)
-            raise e
+            try:
+                # Use 'await' to run the async function and get the real result
+                result = await func(*args, **kwargs)
+                logger.trace(f"Exiting: {func.__name__} (result={result!r})")
+                return result
+            except Exception as e:
+                # Re-log the exception at ERROR level and re-raise
+                logger.error(f"Exception in {func.__name__}: {e}", exc_info=True)
+                raise e
 
-    return wrapper
+        return async_wrapper
+
+    else:
+        # --- Create a REGULAR wrapper for REGULAR functions ---
+        @functools.wraps(func)
+        def sync_wrapper(*args, **kwargs):
+            # Format arguments for logging
+            args_repr = [repr(a) for a in args]
+            kwargs_repr = [f"{k}={v!r}" for k, v in kwargs.items()]
+            signature = ", ".join(args_repr + kwargs_repr)
+
+            logger.trace(f"Entering: {func.__name__}({signature})")
+
+            try:
+                # Just call the regular function
+                result = func(*args, **kwargs)
+                logger.trace(f"Exiting: {func.__name__} (result={result!r})")
+                return result
+            except Exception as e:
+                # Re-log the exception at ERROR level and re-raise
+                logger.error(f"Exception in {func.__name__}: {e}", exc_info=True)
+                raise e
+
+        return sync_wrapper
 
 
 # --- 5. Define the Public API ---
