@@ -27,7 +27,10 @@ from loguru import logger
 logger.remove()
 
 # Give it a level number lower than DEBUG (DEBUG=10)
-logger.level("TRACE", no=5, color="<fg #666666>", icon="↪")
+try:
+    logger.level("TRACE", no=5, color="<fg #666666>", icon="↪")
+except ValueError:
+    pass
 
 LOG_FORMAT = (
     "{time:YYYY-MM-DD HH:mm:ss.SSS} | {level:<8} | {name}:{function}:{line} - {message}"
