@@ -1,11 +1,12 @@
-import loguru
 import asyncpg
 import contextlib
 import os
 from typing import Optional, Any, List, Tuple, AsyncGenerator, Callable, Awaitable
+from outamation_pkg_logger import setup_logging
+
 
 # Get a logger. The consuming app is responsible for configuring it.
-log = loguru.logger
+log = setup_logging()
 
 
 class PostgresManager:
