@@ -19,11 +19,15 @@ Advanced (console and file logging):
 >>> logger.info("This will go to both console and my_app.log")
 """
 
+import functools
 import sys
 import os
 from loguru import logger
 
 logger.remove()
+
+# Give it a level number lower than DEBUG (DEBUG=10)
+logger.level("TRACE", no=5, color="<fg #666666>", icon="↪")
 
 LOG_FORMAT = (
     "{time:YYYY-MM-DD HH:mm:ss.SSS} | {level:<8} | {name}:{function}:{line} - {message}"
@@ -95,5 +99,33 @@ def setup_logging(
     return logger
 
 
+# --- NEW TRACE DECORATOR ---
+def trace(func):
+    """
+    A decorator that logs the entry and exit of a function at TRACE level.
+    It also logs arguments and the return value.
+    """
+
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        # Format arguments for logging
+        args_repr = [repr(a) for a in args]
+        kwargs_repr = [f"{k}={v!r}" for k, v in kwargs.items()]
+        signature = ", ".join(args_repr + kwargs_repr)
+
+        logger.trace(f"Entering: {func.__name__}({signature})")
+
+        try:
+            result = func(*args, **kwargs)
+            logger.trace(f"Exiting: {func.__name__} (result={result!r})")
+            return result
+        except Exception as e:
+            # Re-log the exception at ERROR level and re-raise
+            logger.error(f"Exception in {func.__name__}: {e}", exc_info=True)
+            raise e
+
+    return wrapper
+
+
 # --- 5. Define the Public API ---
-__all__ = ["logger", "setup_logging"]
+__all__ = ["logger", "setup_logging", "trace"]
