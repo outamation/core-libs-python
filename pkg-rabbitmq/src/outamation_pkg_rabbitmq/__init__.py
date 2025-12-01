@@ -3,12 +3,13 @@ from typing import Optional, Callable
 import asyncio
 import json
 from urllib.parse import quote
+from outamation_pkg_logger import setup_logging, trace
 
 from dotenv import load_dotenv
 import aio_pika
 from aio_pika import connect_robust, Message, DeliveryMode
 from aio_pika.abc import AbstractRobustConnection, AbstractRobustChannel
-import requests
+import aiohttp
 
 # Load environment variables
 load_dotenv()
@@ -20,6 +21,8 @@ RABBITMQ_USER = os.getenv("RABBITMQ_USER", "guest")
 RABBITMQ_PASS = os.getenv("RABBITMQ_PASS", "guest")
 RABBITMQ_VHOST = os.getenv("RABBITMQ_VHOST", "/")
 RABBITMQ_MGMT_PORT = os.getenv("RABBITMQ_MGMT_PORT", 15672)
+
+logger = setup_logging(console_level="TRACE", rotation="20 MB", retention="30 days")
 
 
 class RabbitMqService:
@@ -74,7 +77,7 @@ class RabbitMqService:
             self._is_closed = False
 
         except Exception as e:
-            print(f"Failed to connect to RabbitMQ: {e}")
+            logger.error(f"Failed to connect to RabbitMQ: {e}")
             raise
 
     async def publish_message_persistent(
@@ -96,7 +99,7 @@ class RabbitMqService:
             await channel.default_exchange.publish(message, routing_key=queue_name)
 
         except Exception as e:
-            print(f"Error creating queue/publishing message: {e}")
+            logger.error(f"Error creating queue/publishing message: {e}")
             raise
 
     async def declare_new_queue(self, queue_name: str):
@@ -125,7 +128,7 @@ class RabbitMqService:
             await queue_obj.consume(callback)
 
         except Exception as e:
-            print(f"Error creating consumer: {e}")
+            logger.error(f"Error creating consumer: {e}")
             raise
 
     async def get_message(self, queue_name: str):
@@ -142,7 +145,7 @@ class RabbitMqService:
         except aio_pika.exceptions.QueueEmpty:
             return None
         except Exception as e:
-            print(f"Error getting message: {e}")
+            logger.error(f"Error getting message: {e}")
             raise
 
     async def close(self) -> None:
@@ -153,7 +156,7 @@ class RabbitMqService:
             if self.connection and not self.connection.is_closed:
                 await self.connection.close()
         except Exception as e:
-            print(f"Error closing RabbitMQ connection: {e}")
+            logger.error(f"Error closing RabbitMQ connection: {e}")
 
     @staticmethod
     async def peek_and_sum_page_count(
@@ -205,9 +208,11 @@ class RabbitMqService:
         }
 
         try:
-            response = requests.post(url, auth=(username, password), json=payload)
-            response.raise_for_status()
-            messages = response.json()
+            async with aiohttp.ClientSession() as session:
+                auth = aiohttp.BasicAuth(username, password)
+                async with session.post(url, json=payload, auth=auth) as response:
+                    response.raise_for_status()
+                    messages = await response.json()
 
             total_page_count = 0
             for msg in messages:
@@ -218,12 +223,12 @@ class RabbitMqService:
                         "num_of_pages", 0
                     )
                 except Exception as e:
-                    print(f"Error parsing message: {e}")
+                    logger.error(f"Error parsing message: {e}")
 
             return total_page_count, len(messages)
 
         except Exception as e:
-            print(f"Error peeking RabbitMQ queue: {e}")
+            logger.error(f"Error peeking RabbitMQ queue: {e}")
             return 0, 0
 
 
