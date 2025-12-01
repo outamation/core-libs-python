@@ -15,7 +15,7 @@ A generic asynchronous PostgreSQL utility package built on [asyncpg](https://git
 ## Installation
 
 ```bash
-pip install outamation_pkg_postgres
+pip install git+https://github.com/outamation/core-libs-python.git#subdirectory=pkg-postgres
 ```
 
 ## Quick Start
