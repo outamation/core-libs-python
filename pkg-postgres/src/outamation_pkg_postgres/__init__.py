@@ -6,7 +6,7 @@ from outamation_pkg_logger import setup_logging
 
 
 # Get a logger. The consuming app is responsible for configuring it.
-log = setup_logging()
+log = setup_logging(console_level="TRACE", rotation="20 MB", retention="30 days")
 
 
 class PostgresManager:

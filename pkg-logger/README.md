@@ -15,7 +15,7 @@ A lightweight organizational logging utility built on [Loguru](https://github.co
 ## Installation
 
 ```bash
-pip install outamation_pkg_logger
+pip install git+https://github.com/outamation/core-libs-python.git#subdirectory=pkg-logger
 ```
 
 > If using from a monorepo checkout, you can install editable:
