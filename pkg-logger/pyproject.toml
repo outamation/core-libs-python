@@ -18,7 +18,7 @@ classifiers = [
 
 # Core runtime dependencies for the logger package.
 dependencies = [
-    "loguru>=0.7.0"
+    "loguru==0.7.3"
 ]
 
 [project.urls]
