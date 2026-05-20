@@ -21,9 +21,13 @@ Advanced (console and file logging):
 
 import asyncio
 import functools
-import sys
 import os
+import sys
+
 from loguru import logger
+
+from . import cost as _cost  # noqa: F401  # pyright: ignore[reportUnusedImport]  (side-effect import: registers COST level + attaches logger.cost)
+from .publisher import configure_cost_publisher
 
 logger.remove()
 
@@ -159,5 +163,4 @@ def trace(func):
         return sync_wrapper
 
 
-# --- 5. Define the Public API ---
-__all__ = ["logger", "setup_logging", "trace"]
+__all__ = ["logger", "setup_logging", "trace", "configure_cost_publisher"]
