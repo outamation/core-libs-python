@@ -98,6 +98,58 @@ req_logger.info("Started handling request")
 req_logger.success("Completed")
 ```
 
+## Cost Event Logging
+
+The package provides a custom `COST` log level (numeric `25`, between `INFO` and `WARNING`) and a `logger.cost(...)` method for emitting structured cost/token events. When a publisher is configured, events are batched and published to Redis Streams for downstream consumption (e.g. by the cost notification service).
+
+```python
+from outamation_pkg_logger import logger, configure_cost_publisher
+
+# Enable the publisher at application startup. Safe to skip if you only want
+# the log line — logger.cost() then becomes a log-only no-op on the wire.
+configure_cost_publisher(
+    redis_url="redis://localhost:6379/0",
+    service="doc-ai-app",
+)
+
+logger.cost(
+    event="extraction_complete",
+    model="claude-opus-4-7",
+    tokens={"input": 1234, "output": 567, "cache_read": 0, "cache_write": 0},
+    usd=0.1234,
+    file_id="abc-123",
+    tenant_id="acme-corp",
+    request_id="req-xyz",
+    tags={"team": "doc-ai", "stage": "extraction"},
+    metadata={},  # reserved for future fields, NOT used by routing
+)
+```
+
+### Filtering COST out of a sink
+
+```python
+logger.add(sys.stderr, filter=lambda r: r["level"].name != "COST")
+```
+
+### `configure_cost_publisher(...)` parameters
+
+| Parameter | Default | Description |
+|---|---|---|
+| `redis_url` | required | e.g. `"redis://localhost:6379/0"` |
+| `stream` | `"outamation:cost-events"` | Redis Streams key |
+| `flush_interval` | `5.0` | Seconds between flush ticks |
+| `service` | `""` | Producer service name (stamped on every event) |
+| `buffer_cap` | `10_000` | Max in-memory events; oldest dropped on overflow |
+| `stream_maxlen` | `250_000` | Approximate trim cap for the Redis stream |
+| `enabled` | `True` | When `False`, the call is a no-op |
+
+### Behavior notes
+
+- Failures to publish are caught and retried with exponential backoff (5s → 10s → 30s → 60s, capped). The calling app never blocks and never sees an exception.
+- Buffer overflow drops the **oldest** events with a rate-limited WARN log.
+- `metadata` larger than 4 KB triggers a WARN but is still published.
+- An `atexit` handler does a final sync flush with a 2-second timeout on process exit. Hard kills (`os._exit`, `kill -9`) skip this.
+
 ## Exception Logging
 
 ```python
